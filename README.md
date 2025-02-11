@@ -105,7 +105,7 @@ sudo grub-mkconfig -o /boot/grub/grub.cfg
 ---
 
 ## 3. Updating the Monitor Firmware
-If your firmware is outdated, you need a **USB drive (formatted as VFAT)**.
+If your firmware is outdated, you need a **USB drive (mine was formatted as VFAT)**.
 
 - Download the latest firmware from the official Samsung support page:  
   [Samsung LC49G95 Firmware](https://www.samsung.com/fr/support/model/LC49G95TSSUXEN/#downloads)
