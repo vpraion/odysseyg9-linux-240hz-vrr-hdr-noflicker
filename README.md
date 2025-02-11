@@ -7,7 +7,7 @@ This guide complements the work found [here](https://gitlab.freedesktop.org/drm/
 
 This guide is specifically for the **LC49G95** model (5120x1440 - 240Hz - VA - FreeSync Premium - FreeSync range 60-240Hz - HDR).
 
-It seems that many of the users affected by this issue were using an AMD RX 6XXX series, which is my case (6900 XT). I think the solution that I provide works whichever GPU you have, but be cautious.
+It seems that many of the users affected by this issue were using an *AMD RX 6XXX series*, which is my case (**6900 XT**). I think the solution that I provide works whichever GPU you have, but be cautious.
 
 ---
 
