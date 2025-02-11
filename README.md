@@ -64,6 +64,7 @@ If your firmware is outdated, you need a **USB drive (formatted as VFAT)**.
 - Copy the firmware file from the extracted archive **without renaming it** to your USB drive.
 - Insert the USB drive into the **correct** USB port on the monitor (50% chance to get it right!).
 - Use the **OSD menu** on your monitor to start the firmware upgrade process.
+- You can now avoid flickering and ghosting by enabling VRR Control, located in the "System Panel" of your OSD.
 
 ---
 
