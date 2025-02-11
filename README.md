@@ -9,6 +9,53 @@ This guide is specifically for the **LC49G95** model (5120x1440 - 240Hz - VA - F
 
 ---
 
+## Disclaimer
+
+**Important:** Before proceeding with this guide, it's highly recommended to set up SSH access to your machine in case something goes wrong during the reboot, particularly with display settings. If you end up with a black screen or incorrect display settings (e.g., if your monitor is different from the one used in this guide), you may need to remove the EDID configuration from both initramfs and the kernel parameters.
+
+### Steps to Undo the Changes if Display Breaks and assuming that you've already set 240hz refresh rate on the Monitor System itself
+
+1. **Access the system via SSH**:
+   - If SSH is already enabled, connect from another machine using:
+     ```bash
+     ssh user@your-linux-machine-ip
+     ```
+
+2. **Remove the EDID file from initramfs**:
+   - Delete the EDID file reference in the initramfs configuration:
+     ```bash
+     sudo nano /etc/mkinitcpio.conf
+     ```
+   - Remove the parameters you added in the `FILES` array:
+     ```bash
+     FILES=()
+     ```
+
+   - Regenerate the initramfs:
+     ```bash
+     sudo mkinitcpio -P
+     ```
+
+3. **Remove the EDID from the kernel parameters**:
+   - Edit the GRUB configuration to remove the EDID kernel parameter:
+     ```bash
+     sudo nano /etc/default/grub
+     ```
+   - Delete the `drm.edid_firmware=DP-1:edid/g9.bin` parameter from the `GRUB_CMDLINE_LINUX_DEFAULT` line.
+
+   - Regenerate the bootloader configuration:
+     ```bash
+     sudo grub-mkconfig -o /boot/grub/grub.cfg
+     ```
+
+4. **Reboot**:
+   - Reboot the system to apply the changes:
+     ```bash
+     sudo reboot
+     ```
+
+This should restore your system's display settings to their default state.
+
 ## Steps
 
 ### 1. Adding the EDID file to initramfs
