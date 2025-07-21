@@ -1,7 +1,14 @@
 #!/bin/bash
 
-MKINIT_CONF=/etc/mkinitcpio.conf
-GRUB_CONF=/etc/default/grub
+ask_execution() {
+    read -rp "▶️ Run the following command? (y/n) : $* " answer
+    if [[ "$answer" == [Yy] ]]; then
+        "$@"
+    else
+        echo "⏭️ Installation aborted."
+        exit 0
+    fi
+}
 
 # Check for grub-mkconfig
 if ! command -v grub-mkconfig &> /dev/null; then
@@ -13,18 +20,18 @@ fi
 
 # Check for sshd
 if ! command -v sshd &> /dev/null; then
-    echo "❌ sshd not found. 🔐 SSH access is recommended in case something goes wrong."
+    echo "❌ sshd not found. 🔐 SSH access is recommended to recover your system if needed."
     read -rp "Would you like to install it and relaunch the install wizard afterwards? (y/n) " SSHD_WANTED
-    if [[ "$SSHD_WANTED" == "y" ]]; then
+    if [[ "$SSHD_WANTED" == [Yy] ]]; then
         echo "👉 Please install sshd according to your distribution and relaunch the install wizard afterwards."
         exit 0
     else
-        echo "⚠️ Without SSH, you'll need to chroot with an installer medium if something goes wrong."
+        echo "⚠️ Without SSH, you'll need to chroot using an installer medium if recovery is necessary."
     fi
 else
     if ! systemctl is-active --quiet sshd; then
         read -rp "🔐 sshd is installed but not running. Enable SSH for remote access? (y/n) " ENABLE_SSHD
-        if [[ "$ENABLE_SSHD" == "y" ]]; then
+        if [[ "$ENABLE_SSHD" == [Yy] ]]; then
             echo "⚙️ Enabling sshd service..."
             sudo systemctl enable --now sshd
             if [[ $? -ne 0 ]]; then
@@ -61,7 +68,7 @@ if [[ ${#DP_PORTS[@]} -eq 0 ]]; then
 fi
 
 # Prompt user to select DP output
-echo "🎯 Select a DisplayPort output:"
+echo "🎯 Select the DisplayPort output connected to your monitor:"
 PS3="Please enter your choice number: "
 
 select DP_PORT in "${DP_PORTS[@]}"; do
@@ -73,7 +80,7 @@ select DP_PORT in "${DP_PORTS[@]}"; do
     fi
 done
 
-echo "🖥️ Select the EDID corresponding to your monitor :"
+echo "🖥️ Select the EDID file corresponding to your monitor:"
 
 select EDID in "$(ls edids)"; do
     if [[ -n "$EDID" ]]; then
@@ -84,34 +91,50 @@ select EDID in "$(ls edids)"; do
     fi
 done
 
+prepare_environment() {
+    mkdir -p backup
+    mkdir -p tmp
+    cp /etc/mkinitcpio.conf backup/mkinitcpio.conf
+    cp /etc/mkinitcpio.conf tmp/mkinitcpio.conf
+    cp /etc/default/grub backup/grub
+    cp /etc/default/grub tmp/grub
 
-mkdir -p backup
-mkdir -p tmp
-cp $MKINIT_CONF backup/mkinitcpio.conf
-cp $MKINIT_CONF tmp/mkinitcpio.conf
-cp $GRUB_CONF backup/grub
-cp $GRUB_CONF tmp/grub
+    ask_execution sudo cp edids/$EDID /usr/lib/firmware/edid/$EDID
 
-sudo cp edids/$EDID /usr/lib/firmware/edid/$EDID
+    if grep -q "usr/lib/firmware/edid" tmp/mkinitcpio.conf; then
+        sed -i -E "s|usr/lib/firmware/edid/[^ ]+\.bin|usr/lib/firmware/edid/$EDID|g" tmp/mkinitcpio.conf
+    else
+        sed -i -E "/^FILES=\(/ s|^FILES=\(([^)]*)\)|FILES=(\1 /usr/lib/firmware/edid/$EDID)|" tmp/mkinitcpio.conf
+    fi
 
-if grep -q "$EDID" tmp/mkinitcpio.conf; then
-    echo "✅ EDID file already listed in tmp/mkinitcpio.conf, replacing with updated path if needed..."
-    sed -i "s|/usr/lib/firmware/edid/[^ ]*|$EDID|" tmp/mkinitcpio.conf
-else
-    echo "➕ EDID file not listed, appending it to FILES=()"
-    sed -i "/^FILES=(/a \ \ \ \ $EDID" tmp/mkinitcpio.conf
+
+    EDID_PARAM="drm.edid_firmware=$DP_PORT:edid/$EDID"
+
+    if grep -q "drm.edid_firmware=" tmp/grub; then
+        sed -i "s|drm\.edid_firmware=[^ ]*|$EDID_PARAM|" tmp/grub
+    else
+        sed -i '/^GRUB_CMDLINE_LINUX_DEFAULT=/ { /"/! s/=\(.*\)$/="\1"/ }' tmp/grub # Adds quotes if they don't exist
+        sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/s/\"/ $EDID_PARAM\"/" tmp/grub
+    fi
+
+    echo "🔍 Comparing original mkinitcpio.conf with the updated version:"
+    diff /etc/mkinitcpio.conf tmp/mkinitcpio.conf || echo "No changes"
+    printf "\n"
+    echo "🔍 Comparing original GRUB config with the updated version:" || echo "No changes"
+    diff /etc/default/grub tmp/grub
+    printf "\n"
+}
+
+apply_changes() {
+    ask_execution sudo cp tmp/mkinitcpio.conf /etc/mkinitcpio.conf
+    ask_execution sudo mkinitcpio -P
+    ask_execution sudo cp tmp/grub /etc/default/grub
+    ask_execution sudo grub-mkconfig -o /boot/grub/grub.cfg
+    echo "✅ All done! You can now safely reboot your system to apply the changes."
+}
+
+prepare_environment
+read -rp "Do you want to proceed with those changes? (y/n) " PROCEED
+if [[ $PROCEED == [Yy] ]]; then
+    apply_changes
 fi
-
-# sudo mkinitcpio -P
-
-$EDID_PARAM="drm.edid_firmware=$DP_PORT:edid/$EDID"
-
-if grep -q "drm.edid_firmware=" tmp/grub; then
-    echo "✅ EDID parameter already present in GRUB config, updating..."
-    sed -i "s|drm\.edid_firmware=[^ ]*|$EDID_PARAM|" tmp/grub
-else
-    echo "➕ Adding EDID parameter to GRUB_CMDLINE_LINUX_DEFAULT..."
-    sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/s/\"/ $EDID_PARAM\"/" tmp/grub
-fi
-
-# sudo grub-mkconfig -o /boot/grub/grub.cfg
