@@ -2,130 +2,120 @@
 
 ![visitors](https://visitor-badge.laobi.icu/badge?page_id=pgouineblade.odysseyg9-linux-240hz-vrr-hdr-noflicker)
 
-## Tested on Arch Linux with KDE, but should work on other distros as well.
+Tested on Arch Linux with KDE, but should work on other distros as well.
 
-### Why this guide?
-This guide complements the work found [here](https://gitlab.freedesktop.org/drm/amd/-/issues/1442#note_1017689), which managed to enable 240Hz at the cost of losing Variable Refresh Rate (VRR). You might have either followed that guide and lost VRR, or your monitor keeps turning on and off with artifacts all over the place when trying to use 240Hz.
+## About this Project
 
-This guide is specifically for the **LC49G95** model (5120x1440 - 240Hz - VA - FreeSync Premium - FreeSync range 60-240Hz - HDR).
+This repository provides a Linux fix for the **Samsung Odyssey G9** monitor to achieve **240Hz**, **VRR (Variable Refresh Rate)**, **HDR**, and eliminate flickering or ghosting issues, particularly over DisplayPort.
 
-It seems that many of the users affected by this issue were using an *AMD RX 6XXX series*, which is my case (**6900 XT**). I think the solution that I provide works whichever GPU you have, but be cautious.
+An **automated installer script** is now available to simplify the process. However, if:
+- You **don’t use GRUB** as your bootloader (e.g., using systemd-boot, rEFInd, etc.),
+- Or if you want **full control and understanding** of each step,
+
+you can follow the manual guide below. For non-GRUB users, you can adapt the GRUB instructions to match your bootloader’s method for setting kernel parameters.
+
+---
+
+## Why this guide?
+
+This guide complements the work found [here](https://gitlab.freedesktop.org/drm/amd/-/issues/1442#note_1017689), which managed to enable 240Hz at the cost of losing Variable Refresh Rate (VRR). You might have either followed that guide and lost VRR, or your monitor keeps turning on and off with artifacts when trying to use 240Hz.
+
+This guide specifically targets the **LC49G95** model (5120x1440 - 240Hz - VA - FreeSync Premium - FreeSync range 60-240Hz - HDR). It might work with another models but I don't recommend it since you'll inherit of all the **LC49G95** settings.
+
+Many affected users seem to own an **AMD RX 6XXX series GPU**, such as my **6900 XT**, but this solution is potentially effective regardless of GPU vendor. Proceed carefully.
 
 ---
 
 ## Disclaimer
 
-**Important:** Before proceeding with this guide, it's highly recommended to set up SSH access to your machine in case something goes wrong during the reboot, particularly with display settings. If you end up with a black screen or incorrect display settings (e.g., if your monitor is different from the one used in this guide), you may need to remove the EDID configuration from both initramfs and the kernel parameters.
+Before proceeding, it is highly recommended to **set up SSH access** to your machine, in case a misconfiguration prevents graphical boot. This ensures you can reverse the changes remotely.
 
-### Steps to Undo the Changes if Display Breaks and assuming that you've already set 240hz refresh rate on the Monitor System itself
+---
 
-1. **Access the system via SSH**:
-   - If SSH is already enabled, connect from another machine using:
-     ```bash
-     ssh user@your-linux-machine-ip
-     ```
-
-2. **Remove the EDID file from initramfs**:
-   - Delete the EDID file reference in the initramfs configuration:
-     ```bash
-     sudo nano /etc/mkinitcpio.conf
-     ```
-   - Remove the parameters you added in the `FILES` array:
-     ```bash
-     FILES=()
-     ```
-
-   - Regenerate the initramfs:
-     ```bash
-     sudo mkinitcpio -P
-     ```
-
-3. **Remove the EDID from the kernel parameters**:
-   - Edit the GRUB configuration to remove the EDID kernel parameter:
-     ```bash
-     sudo nano /etc/default/grub
-     ```
-   - Delete the `drm.edid_firmware=DP-1:edid/g9.bin` parameter from the `GRUB_CMDLINE_LINUX_DEFAULT` line.
-
-   - Regenerate the bootloader configuration:
-     ```bash
-     sudo grub-mkconfig -o /boot/grub/grub.cfg
-     ```
-
-4. **Reboot**:
-   - Reboot the system to apply the changes:
-     ```bash
-     sudo reboot
-     ```
-
-This should restore your system's display settings to their default state.
-
-## Steps
+## Manual Installation Guide
 
 ### 1. Adding the EDID file to initramfs
-First, copy the provided EDID file to the firmware directory:
+
+Copy the provided EDID file to the firmware directory:
 ```bash
-sudo cp g9.bin /usr/lib/firmware/edid/g9.bin
+sudo cp edids/LC49G95.bin /usr/lib/firmware/edid/LC49G95.bin
 ```
 
-Edit the initramfs configuration file:
+Edit your initramfs configuration:
 ```bash
 sudo nano /etc/mkinitcpio.conf
 ```
+
 Add the EDID path to the `FILES` array:
 ```bash
-FILES=(/usr/lib/firmware/edid/g9.bin)
+FILES=(/usr/lib/firmware/edid/LC49G95.bin)
 ```
 
-Regenerate the initramfs:
+Then regenerate the initramfs:
 ```bash
 sudo mkinitcpio -P
 ```
 
 ### 2. Adding the EDID to Linux kernel parameters
-Edit the GRUB configuration file:
+
+If you are using GRUB, edit:
 ```bash
 sudo nano /etc/default/grub
 ```
 
-Add the following parameter to `GRUB_CMDLINE_LINUX_DEFAULT`:
+Add this to `GRUB_CMDLINE_LINUX_DEFAULT` (replace `DP-1` with your actual DisplayPort connection):
 ```bash
-drm.edid_firmware=DP-1:edid/g9.bin
+drm.edid_firmware=DP-1:edid/LC49G95.bin
 ```
-**(Ensure `DP-1` is your actual DisplayPort connector; this requires a DisplayPort connection)**
 
 Example:
 ```bash
-GRUB_CMDLINE_LINUX_DEFAULT="... drm.edid_firmware=DP-1:edid/g9.bin"
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash drm.edid_firmware=DP-1:edid/LC49G95.bin"
 ```
 
-Regenerate the bootloader configuration:
+Regenerate GRUB’s configuration:
 ```bash
 sudo grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
+For other bootloaders, adapt this parameter accordingly.
+
 ---
 
-## 3. Updating the Monitor Firmware
-If your firmware is outdated, you need a **USB drive (mine was formatted as VFAT)**.
+### 3. Optional: Updating the Monitor Firmware
 
-- Download the latest firmware from the official Samsung support page:  
-  [Samsung LC49G95 Firmware](https://www.samsung.com/fr/support/model/LC49G95TSSUXEN/#downloads)
-- Unzip the downloaded file.
-- Copy the firmware file from the extracted archive **without renaming it** to your USB drive.
-- Insert the USB drive into the **correct** USB port on the monitor (50% chance to get it right!).
-- Use the **OSD menu** on your monitor to start the firmware upgrade process.
-- You can now avoid flickering and ghosting by enabling VRR Control, located in the "System Panel" of your OSD.
+If your monitor's firmware is outdated, download it here:  
+[Samsung LC49G95 Firmware](https://www.samsung.com/fr/support/model/LC49G95TSSUXEN/#downloads)
+
+Follow Samsung’s instructions to flash it using a FAT-formatted USB drive.
+
+---
+
+## Uninstall / Rollback Instructions
+
+If the display breaks after reboot:
+1. **SSH into your system**, or use a recovery medium with chroot.
+2. Edit `/etc/mkinitcpio.conf` to remove the EDID from the `FILES` array.
+3. Rebuild initramfs:
+```bash
+sudo mkinitcpio -P
+```
+4. Remove the `drm.edid_firmware=...` from your bootloader’s kernel parameters.
+5. Rebuild the bootloader config (for GRUB: `sudo grub-mkconfig -o /boot/grub/grub.cfg`).
+6. Reboot.
 
 ---
 
 ## Background Story
-I spent over **15 hours** troubleshooting this issue through trial and error.
-For some unknown reason, everything works fine on **Windows**, but not on **Linux**.
-The EDID reported by my monitor differs between Windows and Linux.
 
-After discovering the [GitLab issue](https://gitlab.freedesktop.org/drm/amd/-/issues/1442#note_1017689), I found an **EDID file that partially worked**, but VRR was still disabled. Through further **manual testing**, I figured out which values needed modification to restore VRR.
+I spent over **15 hours** troubleshooting this issue via trial and error. On **Windows**, everything works out of the box, but not on Linux.
 
-Most GUI tools for editing EDID files **failed**, as the G9’s EDID format appears to be unconventional.
+After testing EDID dumps between OSes, I crafted a compatible EDID that restores full **240Hz**, **VRR**, and **HDR** capabilities — without flicker or ghosting.
 
-Now, everything is working as expected—**240Hz, VRR, and HDR enabled without flickering or ghosting!** 🚀
+Most GUI EDID editors failed because the G9's EDID is unconventional, so this was mostly handcrafted.
+
+🚀 Everything now works flawlessly on Linux!
+
+---
+
+For the automated installation process, check out the `install.sh` script provided in this repository. 🎉
