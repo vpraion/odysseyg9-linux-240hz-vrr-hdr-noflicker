@@ -1,7 +1,7 @@
 #!/bin/bash
 
-$MKINIT_CONF=/etc/mkinitcpio.conf
-$GRUB_CONF=/etc/default/grub
+MKINIT_CONF=/etc/mkinitcpio.conf
+GRUB_CONF=/etc/default/grub
 
 # Check for grub-mkconfig
 if ! command -v grub-mkconfig &> /dev/null; then
@@ -77,7 +77,6 @@ echo "🖥️ Select the EDID corresponding to your monitor :"
 
 select EDID in "$(ls edids)"; do
     if [[ -n "$EDID" ]]; then
-        $EDID=$EDID
         echo "✅ You chose: $EDID"
         break
     else
