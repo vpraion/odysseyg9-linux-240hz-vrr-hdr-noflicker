@@ -97,10 +97,10 @@ sudo cp edids/$EDID /usr/lib/firmware/edid/$EDID
 
 if grep -q "$EDID" tmp/mkinitcpio.conf; then
     echo "✅ EDID file already listed in tmp/mkinitcpio.conf, replacing with updated path if needed..."
-    sudo sed -i "s|/usr/lib/firmware/edid/[^ ]*|$EDID|" tmp/mkinitcpio.conf
+    sed -i "s|/usr/lib/firmware/edid/[^ ]*|$EDID|" tmp/mkinitcpio.conf
 else
     echo "➕ EDID file not listed, appending it to FILES=()"
-    sudo sed -i "/^FILES=(/a \ \ \ \ $EDID" tmp/mkinitcpio.conf
+    sed -i "/^FILES=(/a \ \ \ \ $EDID" tmp/mkinitcpio.conf
 fi
 
 # sudo mkinitcpio -P
@@ -109,10 +109,10 @@ $EDID_PARAM="drm.edid_firmware=$DP_PORT:edid/$EDID"
 
 if grep -q "drm.edid_firmware=" tmp/grub; then
     echo "✅ EDID parameter already present in GRUB config, updating..."
-    sudo sed -i "s|drm\.edid_firmware=[^ ]*|$EDID_PARAM|" tmp/grub
+    sed -i "s|drm\.edid_firmware=[^ ]*|$EDID_PARAM|" tmp/grub
 else
     echo "➕ Adding EDID parameter to GRUB_CMDLINE_LINUX_DEFAULT..."
-    sudo sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/s/\"/ $EDID_PARAM\"/" tmp/grub
+    sed -i "/^GRUB_CMDLINE_LINUX_DEFAULT=/s/\"/ $EDID_PARAM\"/" tmp/grub
 fi
 
 # sudo grub-mkconfig -o /boot/grub/grub.cfg
